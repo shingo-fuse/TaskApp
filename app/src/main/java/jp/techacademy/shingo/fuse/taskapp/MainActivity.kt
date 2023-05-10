@@ -4,12 +4,15 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -24,20 +27,23 @@ import io.realm.kotlin.query.Sort
 import jp.techacademy.shingo.fuse.taskapp.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
 
-const val EXTRA_TASK = "jp.techacademy.taro.kirameki.taskapp.TASK"
 
+const val EXTRA_TASK = "jp.techacademy.shingo.fuse.taskapp.TASK"
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var taskAdapter: TaskAdapter
-    private lateinit var realm: Realm
-    private lateinit var task: Task
+    private lateinit var realm1: Realm
+    private lateinit var realm2:Realm
+
     private var tasks: List<Task>? = null
+    private var spinnerItems: List<Category>? = null
+
 
     private val requestPermissonLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()){isGranted ->
-            if(isGranted){
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
                 // 権限が許可された
-                Log.d("ANDROID","許可された")
+                Log.d("ANDROID", "許可された")
             } else {
                 //　権限が拒否された
                 Log.d("ANDROID", "許可されなかった")
@@ -54,15 +60,15 @@ class MainActivity : AppCompatActivity() {
             // 通知権限が許可されているか確認する
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 // 権限許可済
-                Log.d("ANDROID","許可されている")
-            }else {
+                Log.d("ANDROID", "許可されている")
+            } else {
                 // 許可されていないので許可ダイアログを表示する
-                Log.d("ANDROID","許可されていない")
+                Log.d("ANDROID", "許可されていない")
                 requestPermissonLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         } else {
             // APIレベル33以前のため、アプリ毎の通知設定を確認する
-            if( !NotificationManagerCompat.from(this).areNotificationsEnabled()){
+            if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
                 // OSバージョン確認（APIレベル26以上）
                 val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     // APIレベルが26以上なので、直接通知の設定画面に遷移する
@@ -112,7 +118,7 @@ class MainActivity : AppCompatActivity() {
             builder.setTitle("削除")
             builder.setMessage(task.title + "を削除しますか")
             builder.setPositiveButton("OK") { _, _ ->
-                realm.writeBlocking {
+                realm1.writeBlocking {
                     // タスクのIDに該当するデータを削除する
                     val tasks = query<Task>("id==${task.id}").find()
                     tasks.forEach {
@@ -142,43 +148,52 @@ class MainActivity : AppCompatActivity() {
             true
         }
         // Realmデータベースとの接続を開く
-        val config = RealmConfiguration.create(schema = setOf(Task::class))
-        realm = Realm.open(config)
+        val config1 = RealmConfiguration.create(schema = setOf(Task::class))
+        realm1 = Realm.open(config1)
 
+        // spinerのRealmデータベースとの接続を開く
+        val config2 = RealmConfiguration.create(schema = setOf(Category::class))
+        realm2 = Realm.open(config2)
+        //カテゴリの登録
+        spinnerItems = realm2.query<Category>().sort("id", Sort.DESCENDING).find()
 
-        // Realmからタスクの一覧を取得
-        tasks = realm.query<Task>().sort("date", Sort.DESCENDING).find()
-        display()
+        // ArrayAdapter
+        val adapter = ArrayAdapter(
+            applicationContext,
+            android.R.layout.simple_spinner_item,
+            spinnerItems as RealmResults<Category>
+        )
 
-        //検索したカタログの一覧を取得.更新
-        binding.searchButton.setOnClickListener {
-            val search: String = binding.searchEdit.text.toString()
-            if (search.isEmpty()) {
-                tasks = realm.query<Task>().sort("date", Sort.DESCENDING).find()
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinner.adapter = adapter
+
+        // リスナーを登録
+        binding.spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            //　アイテムが選択された時
+
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?, position: Int, id: Long
+            ) {
+                val spinnerParent = parent as Spinner
+                val selectedCategory = spinnerItems?.get(position)
+                val item = spinnerParent.selectedItem.toString()
+                // View Binding
+                binding.textView.text = item
+
+                tasks = realm1.query<Task>("categoryId==${selectedCategory?.id}").find()
                 display()
-            }else {
-                tasks = realm.query<Task>("category = '$search'").sort("id", Sort.DESCENDING).find()
-                display()
+
             }
 
-
-
-
-            binding.backButton.isEnabled = true
-            binding.backButton.setTextColor(Color.WHITE)
-
-
+            //　アイテムが選択されなかった
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                //
+            }
         }
 
-        //前の保存データに戻る
-        binding.backButton.setOnClickListener {
-            tasks = realm.query<Task>().sort("date", Sort.DESCENDING).find()
-            display()
-        }
-
-
-        binding.backButton.isEnabled = false
-        binding.backButton.setTextColor(Color.BLACK)
+        tasks = realm1.query<Task>().sort("id", Sort.DESCENDING).find()
+        display()
 
     }
 
@@ -187,7 +202,8 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
 
         // Realmデータベースとの接続を閉じる
-        realm.close()
+        realm1.close()
+        realm2.close()
     }
 
     // Realmが起動、または更新（追加、変更、削除）時にreloadListViewを実行する
@@ -207,15 +223,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * リストの一覧を更新する
-     */
+
+
+    // タスクリストの一覧を更新する
+
     private suspend fun reloadListView(list: List<Task>) {
         withContext(Dispatchers.Main) {
             taskAdapter.updateTaskList(list)
         }
     }
+
 }
+
+
 
 
 

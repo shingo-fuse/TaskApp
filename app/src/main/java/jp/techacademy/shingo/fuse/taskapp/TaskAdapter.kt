@@ -11,6 +11,7 @@ class TaskAdapter(context: Context) : BaseAdapter() {
     private val layoutInflater: LayoutInflater
     private var taskList = mutableListOf<Task>()
 
+
     init {
         this.layoutInflater = LayoutInflater.from(context)
     }
@@ -33,6 +34,7 @@ class TaskAdapter(context: Context) : BaseAdapter() {
 
         val textView1 = view.findViewById<TextView>(android.R.id.text1)
         val textView2 = view.findViewById<TextView>(android.R.id.text2)
+
 
         textView1.text = taskList[position].title
         textView2.text = taskList[position].date

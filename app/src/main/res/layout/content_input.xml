@@ -21,28 +21,31 @@
     <EditText
         android:id="@+id/content_edit_text"
         android:layout_width="match_parent"
+        android:hint="内容"
         android:layout_height="48dp"
-        android:layout_below="@id/title_edit_text"
-        android:hint="@string/input_content_hint"
-        android:importantForAutofill="no"
-        android:inputType="text"
-        tools:ignore="VisualLintTextFieldSize" />
+        android:layout_below="@id/title_edit_text"/>
 
-    <EditText
-        android:id="@+id/category_edit_text"
-        android:layout_width="match_parent"
+    <Spinner
+        android:id="@+id/spinner"
+        android:layout_width="200dp"
         android:layout_height="48dp"
         android:layout_below="@id/content_edit_text"
-        android:hint="カテゴリ"
-        android:importantForAutofill="no"
-        android:inputType="text"
-        tools:ignore="VisualLintTextFieldSize" />
+        tools:ignore="SpeakableTextPresentCheck" />
+
+    <Button
+        android:id="@+id/addition_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="追加"
+        android:layout_marginLeft="100dp"
+        android:layout_below="@id/content_edit_text"
+        android:layout_toRightOf="@+id/spinner" />
 
     <Button
         android:id="@+id/date_button"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_below="@id/category_edit_text"
+        android:layout_below="@+id/spinner"
         android:layout_alignParentStart="true"
         android:layout_marginEnd="16dp"
         android:layout_toStartOf="@+id/time_button"
@@ -53,7 +56,7 @@
         android:id="@id/time_button"
         android:layout_width="96dp"
         android:layout_height="wrap_content"
-        android:layout_below="@id/category_edit_text"
+        android:layout_below="@id/spinner"
         android:layout_alignParentEnd="true"
         android:text="@string/button_time_text" />
 
