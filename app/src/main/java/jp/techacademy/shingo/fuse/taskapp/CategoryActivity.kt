@@ -35,18 +35,20 @@ class CategoryActivity : AppCompatActivity() {
         binding.saveButton.setOnClickListener {
             CoroutineScope(Dispatchers.Default).launch {
                 addCategory()
+                finish()
             }
-            val intent = Intent(this, InputActivity::class.java)
-            startActivity(intent)
+                val intent = Intent(this, InputActivity::class.java)
+                startActivity(intent)
+            }
         }
-    }
+
 
     //カテゴリの登録または更新
     private suspend fun addCategory() {
+        // 登録する値の取得
+        val categoryName = binding.categoryEdit.text.toString()
 
         if (category.id == -1) {
-            // 登録(更新)する値の取得
-            val categoryName = binding.categoryEdit.text.toString()
             // 最大のid+1をセット
             category.id = (realm.query<Category>().max("id", Int::class).find() ?: -1) + 1
             // 画面項目の値で更新
@@ -58,7 +60,6 @@ class CategoryActivity : AppCompatActivity() {
                 copyToRealm(category)
             }
         } else {
-            // 更新
             realm.write {
                 findLatest(category)?.apply {
                     // 画面項目の値で更新
